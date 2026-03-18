@@ -1,5 +1,6 @@
 import os
-import subprocess
+import urllib.request
+import shutil
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -55,12 +56,16 @@ def load_and_prep_data(start_year):
     local_file_name = "local_deployment_data.parquet"
     data_url = "https://github.com/sisodiyaatharva91-del/streamlit-test/releases/download/v1.1/NSE_15Y_Deployment_Ready.parquet"
     
-    # 1. Download using the OS native wget tool
+    # 1. Download using Python's immutable standard library
     if not os.path.exists(local_file_name):
         try:
-            subprocess.run(["wget", "-q", "-O", local_file_name, data_url], check=True)
-        except subprocess.CalledProcessError as e:
-            st.error("Failed to download the dataset via wget. Check if the GitHub Release URL is exactly correct.")
+            # We add a generic User-Agent so GitHub doesn't block the request
+            req = urllib.request.Request(data_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req) as response, open(local_file_name, 'wb') as out_file:
+                # shutil safely streams the file in chunks natively
+                shutil.copyfileobj(response, out_file)
+        except Exception as e:
+            st.error("Failed to fetch the dataset. Please double-check the GitHub Release URL.")
             raise e
                 
     # 2. Read the stable local file
