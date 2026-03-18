@@ -323,5 +323,10 @@ try:
     st.dataframe(combined_logs.tail(10))
     st.download_button("Download Full Trade Log (CSV)", data=combined_logs.to_csv(index=False).encode('utf-8'), file_name="master_trade_log.csv", mime="text/csv")
 
+import traceback
+
+# ... (Keep the rest of your UI code) ...
+
 except Exception as e:
-    st.error(f"Error: {e}. Please check the trace for details.")
+    st.error("🚨 APP CRASHED. Here is the raw Python trace:")
+    st.code(traceback.format_exc())
