@@ -56,7 +56,7 @@ def load_and_prep_data(start_year):
     local_file_name = "local_deployment_data.parquet"
     
     # 🔴 PASTE YOUR EXACT GOOGLE DRIVE SHARE LINK BELOW 🔴
-    drive_url = "https://drive.google.com/file/d/YOUR_COPIED_LINK_ID/view?usp=sharing"
+    drive_url = "https://drive.google.com/file/d/1_k7hbo8GkdIYBM1bwEli7Guvk_QJmSm_/view?usp=sharing"
     
     if not os.path.exists(local_file_name):
         gdown.download(drive_url, local_file_name, quiet=False, fuzzy=True)
