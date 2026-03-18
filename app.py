@@ -1,10 +1,10 @@
 import os
-import urllib.request
-import shutil
-import streamlit as st
+import gdown
+import traceback
+import warnings
 import pandas as pd
 import numpy as np
-import warnings
+import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -49,30 +49,32 @@ MR_CONFIG = {
 }
 
 # ==========================================
-# 3. DATA INGESTION (BULLETPROOF DOWNLOAD)
+# 3. DATA INGESTION (GOOGLE DRIVE BULLETPROOF)
 # ==========================================
-import gdown
-import os
-
 @st.cache_data
 def load_and_prep_data(start_year):
     local_file_name = "local_deployment_data.parquet"
     
-    # Paste your Google Drive sharing link here
-    drive_url = "https://drive.google.com/file/d/1agRXbj5nYF9uzUdrLUqO0fvtSdz7gyU6/view?usp=sharing"
+    # 🔴 PASTE YOUR EXACT GOOGLE DRIVE SHARE LINK BELOW 🔴
+    drive_url = "https://drive.google.com/file/d/YOUR_COPIED_LINK_ID/view?usp=sharing"
     
     if not os.path.exists(local_file_name):
-        # fuzzy=True allows gdown to extract the direct download ID from standard share links
         gdown.download(drive_url, local_file_name, quiet=False, fuzzy=True)
                 
-    df = pd.read_parquet(local_file_name)
+    try:
+        df = pd.read_parquet(local_file_name)
+    except Exception as read_error:
+        if os.path.exists(local_file_name):
+            os.remove(local_file_name)
+        raise Exception(f"The Parquet file is corrupted or incomplete. Auto-deleted the bad file. Raw error: {read_error}")
+
     df['DATE'] = pd.to_datetime(df['DATE']).dt.tz_localize(None)
     df = df[df['DATE'] >= start_year]
     
     return df
 
 # ==========================================
-# 4. PORTFOLIO SIMULATOR (RUNS ON UI CHANGE)
+# 4. PORTFOLIO SIMULATOR
 # ==========================================
 def run_sleeve_simulator(df, bb_config, mr_config):
     period_df = df.sort_values(by=['DATE', 'Turnover_SMA_50'], ascending=[True, False])
@@ -94,7 +96,6 @@ def run_sleeve_simulator(df, bb_config, mr_config):
     equity_curve = []
     
     for current_date in calendar_dates:
-        # Yield on Idle Cash (7.5%)
         bb_yield = max(0, bb_cash) * (0.075 / 365)
         bb_cash += bb_yield
         bb_equity += bb_yield
@@ -214,7 +215,6 @@ def run_sleeve_simulator(df, bb_config, mr_config):
                 
             bb_buy_signals = day_df[day_df['BB_Enter_Today'] == True]
             if not bb_buy_signals.empty and bb_cash > 0 and len(active_bb_positions) < max_bb_positions:
-                # We sort by Target_ATR as a proxy since RSI_14 was dropped in the lean dataset
                 bb_buy_signals = bb_buy_signals.sort_values(by='Target_ATR', ascending=False)
                 
                 for _, row in bb_buy_signals.iterrows():
@@ -264,7 +264,7 @@ def run_sleeve_simulator(df, bb_config, mr_config):
     return pd.DataFrame(trade_log), pd.DataFrame(equity_curve)
 
 # ==========================================
-# 5. EXECUTION & DISPLAY
+# 5. METRICS CALCULATION
 # ==========================================
 def calculate_metrics(trades_df, equity_df, start_cap, col_name='Combined_Equity'):
     if trades_df.empty or equity_df.empty: return {}
@@ -281,6 +281,9 @@ def calculate_metrics(trades_df, equity_df, start_cap, col_name='Combined_Equity
     return {"Trades": len(trades_df), "Win Rate %": round(win_rate, 2), "Profit Factor": round(pf, 2), 
             "Max DD %": round(dd, 2), "Net Return %": round(net_ret, 2), "CAGR %": round(cagr, 2), "Ending Value": round(ending, 2)}
 
+# ==========================================
+# 6. EXECUTION BLOCK (WITH TRACEBACK LOGGING)
+# ==========================================
 try:
     with st.spinner("Downloading & Loading 15Y Dataset (This happens only once)..."):
         raw_df = load_and_prep_data(START_YEAR)
@@ -288,7 +291,6 @@ try:
     with st.spinner("Running Unleveraged Master Ledger..."):
         combined_logs, merged_eq = run_sleeve_simulator(raw_df, BB_CONFIG, MR_CONFIG)
 
-    # --- METRICS UI ---
     st.markdown("### 📊 Performance Metrics")
     bb_metrics = calculate_metrics(combined_logs[combined_logs['Strategy'] == 'Blue Box'], merged_eq, BB_CONFIG['initial_capital'], 'BB_Equity')
     mr_metrics = calculate_metrics(combined_logs[combined_logs['Strategy'] == 'Mean Reversion'], merged_eq, MR_CONFIG['initial_capital'], 'MR_Equity')
@@ -302,31 +304,23 @@ try:
 
     st.markdown("---")
     
-    # --- PLOTLY INTERACTIVE CHARTS ---
     st.markdown("### 📈 Interactive Equity & Drawdown Curve")
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.7, 0.3])
 
-    # Top: Equity
     fig.add_trace(go.Scatter(x=merged_eq['DATE'], y=merged_eq['Combined_Equity'], name='Master Portfolio', line=dict(color='#00ff88', width=2)), row=1, col=1)
     fig.add_trace(go.Scatter(x=merged_eq['DATE'], y=merged_eq['BB_Equity'], name='V21 Sniper (25%)', line=dict(color='#00d2ff', width=1)), row=1, col=1)
     fig.add_trace(go.Scatter(x=merged_eq['DATE'], y=merged_eq['MR_Equity'], name='Mean Reversion (75%)', line=dict(color='#ff007c', width=1)), row=1, col=1)
 
-    # Bottom: Drawdown
     combined_dd = (merged_eq['Combined_Equity'] - merged_eq['Combined_Equity'].cummax()) / merged_eq['Combined_Equity'].cummax() * 100
     fig.add_trace(go.Scatter(x=merged_eq['DATE'], y=combined_dd, fill='tozeroy', name='Master DD', line=dict(color='red', width=1)), row=2, col=1)
 
     fig.update_layout(height=600, template='plotly_dark', hovermode='x unified', margin=dict(l=0, r=0, t=30, b=0))
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- EXPORT ---
     st.markdown("### 🗄️ Trade Logs")
     st.dataframe(combined_logs.tail(10))
     st.download_button("Download Full Trade Log (CSV)", data=combined_logs.to_csv(index=False).encode('utf-8'), file_name="master_trade_log.csv", mime="text/csv")
 
-import traceback
-
-# ... (Keep the rest of your UI code) ...
-
 except Exception as e:
-    st.error("🚨 APP CRASHED. Here is the raw Python trace:")
+    st.error("🚨 APP CRASHED. Here is the exact technical trace:")
     st.code(traceback.format_exc())
