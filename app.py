@@ -51,24 +51,20 @@ MR_CONFIG = {
 # ==========================================
 # 3. DATA INGESTION (BULLETPROOF DOWNLOAD)
 # ==========================================
+import gdown
+import os
+
 @st.cache_data
 def load_and_prep_data(start_year):
     local_file_name = "local_deployment_data.parquet"
-    data_url = "https://github.com/sisodiyaatharva91-del/streamlit-test/releases/download/v1.1/NSE_15Y_Deployment_Ready.parquet"
     
-    # 1. Download using Python's immutable standard library
+    # Paste your Google Drive sharing link here
+    drive_url = "https://drive.google.com/file/d/1agRXbj5nYF9uzUdrLUqO0fvtSdz7gyU6/view?usp=sharing"
+    
     if not os.path.exists(local_file_name):
-        try:
-            # We add a generic User-Agent so GitHub doesn't block the request
-            req = urllib.request.Request(data_url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req) as response, open(local_file_name, 'wb') as out_file:
-                # shutil safely streams the file in chunks natively
-                shutil.copyfileobj(response, out_file)
-        except Exception as e:
-            st.error("Failed to fetch the dataset. Please double-check the GitHub Release URL.")
-            raise e
+        # fuzzy=True allows gdown to extract the direct download ID from standard share links
+        gdown.download(drive_url, local_file_name, quiet=False, fuzzy=True)
                 
-    # 2. Read the stable local file
     df = pd.read_parquet(local_file_name)
     df['DATE'] = pd.to_datetime(df['DATE']).dt.tz_localize(None)
     df = df[df['DATE'] >= start_year]
