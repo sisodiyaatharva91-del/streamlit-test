@@ -157,25 +157,14 @@ def apply_mean_reversion_logic(df):
 # ==========================================
 @st.cache_data
 def load_and_prep_data(start_year):
-    # Paste the URL you copied from the GitHub Release here
-    data_url = "https://github.com/sisodiyaatharva91-del/streamlit-test/releases/download/v1.0/NSE_EQ_2020_Fast.parquet"
+    # Paste your NEW v1.1 GitHub Release URL here
+    data_url = "https://github.com/sisodiyaatharva91-del/streamlit-test/releases/download/v1.1/NSE_15Y_Deployment_Ready.parquet"
     
-    # Pandas will stream the parquet file directly from the release
+    # Notice how we completely removed the apply_blue_box and mean_reversion functions here!
     df = pd.read_parquet(data_url)
-    
-    # ... (Keep the rest of your formatting and logic exactly the same)
-    
-    col_map = {str(c).lower(): str(c).upper() for c in df.columns}
-    df = df.rename(columns=col_map)
-    if 'TICKER' in df.columns and 'SYMBOL' not in df.columns:
-        df = df.rename(columns={'TICKER': 'SYMBOL'})
-        
     df['DATE'] = pd.to_datetime(df['DATE']).dt.tz_localize(None)
     df = df[df['DATE'] >= start_year]
-    df = df.sort_values(by=['SYMBOL', 'DATE']).reset_index(drop=True)
-
-    df = apply_blue_box_logic(df)
-    df = apply_mean_reversion_logic(df)
+    
     return df
 
 # ==========================================
