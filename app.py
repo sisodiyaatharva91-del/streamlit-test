@@ -51,11 +51,14 @@ MR_CONFIG = {
 # ==========================================
 # 3. DATA INGESTION (GOOGLE DRIVE BULLETPROOF)
 # ==========================================
-@st.cache_data
+# ==========================================
+# 3. DATA INGESTION (ZERO-COPY CACHE)
+# ==========================================
+@st.cache_resource # <--- CHANGED THIS
 def load_and_prep_data(start_year):
     local_file_name = "local_deployment_data.parquet"
     
-    # 🔴 PASTE YOUR EXACT GOOGLE DRIVE SHARE LINK BELOW 🔴
+    # Keep your exact Google Drive link here
     drive_url = "https://drive.google.com/file/d/1_k7hbo8GkdIYBM1bwEli7Guvk_QJmSm_/view?usp=sharing"
     
     if not os.path.exists(local_file_name):
@@ -66,10 +69,13 @@ def load_and_prep_data(start_year):
     except Exception as read_error:
         if os.path.exists(local_file_name):
             os.remove(local_file_name)
-        raise Exception(f"The Parquet file is corrupted or incomplete. Auto-deleted the bad file. Raw error: {read_error}")
+        raise Exception(f"The Parquet file is corrupted. Auto-deleted. Error: {read_error}")
 
     df['DATE'] = pd.to_datetime(df['DATE']).dt.tz_localize(None)
     df = df[df['DATE'] >= start_year]
+    
+    # WE SORT IT HERE ONCE, NEVER AGAIN
+    df = df.sort_values(by=['DATE', 'Turnover_SMA_50'], ascending=[True, False])
     
     return df
 
@@ -77,8 +83,9 @@ def load_and_prep_data(start_year):
 # 4. PORTFOLIO SIMULATOR
 # ==========================================
 def run_sleeve_simulator(df, bb_config, mr_config):
-    period_df = df.sort_values(by=['DATE', 'Turnover_SMA_50'], ascending=[True, False])
-    grouped_by_date = period_df.groupby('DATE')
+    # DELETED the period_df sorting line!
+    # Group directly on the pre-sorted dataframe
+    grouped_by_date = df.groupby('DATE') 
     
     start_date = df['DATE'].min()
     end_date = df['DATE'].max()
