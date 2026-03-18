@@ -156,8 +156,14 @@ def apply_mean_reversion_logic(df):
 # 3. DATA INGESTION (HEAVY LIFTING CACHED)
 # ==========================================
 @st.cache_data
-def load_and_prep_data(file_path, start_year):
-    df = pd.read_parquet(file_path)
+def load_and_prep_data(start_year):
+    # Paste the URL you copied from the GitHub Release here
+    data_url = "https://github.com/sisodiyaatharva91-del/streamlit-test/releases/download/v1.0/NSE_EQ_2020_Fast.parquet"
+    
+    # Pandas will stream the parquet file directly from the release
+    df = pd.read_parquet(data_url)
+    
+    # ... (Keep the rest of your formatting and logic exactly the same)
     
     col_map = {str(c).lower(): str(c).upper() for c in df.columns}
     df = df.rename(columns=col_map)
