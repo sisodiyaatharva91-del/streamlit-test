@@ -1,11 +1,11 @@
+import os
+import subprocess
 import streamlit as st
 import pandas as pd
 import numpy as np
 import warnings
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import os
-import requests
 
 warnings.filterwarnings("ignore")
 
@@ -53,17 +53,15 @@ MR_CONFIG = {
 @st.cache_data
 def load_and_prep_data(start_year):
     local_file_name = "local_deployment_data.parquet"
-    # Ensure this URL matches your GitHub v1.1 release exactly
     data_url = "https://github.com/sisodiyaatharva91-del/streamlit-test/releases/download/v1.1/NSE_15Y_Deployment_Ready.parquet"
     
-    # 1. Download locally if it doesn't exist on the server yet
+    # 1. Download using the OS native wget tool
     if not os.path.exists(local_file_name):
-        response = requests.get(data_url, stream=True)
-        response.raise_for_status() 
-        
-        with open(local_file_name, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+        try:
+            subprocess.run(["wget", "-q", "-O", local_file_name, data_url], check=True)
+        except subprocess.CalledProcessError as e:
+            st.error("Failed to download the dataset via wget. Check if the GitHub Release URL is exactly correct.")
+            raise e
                 
     # 2. Read the stable local file
     df = pd.read_parquet(local_file_name)
