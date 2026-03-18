@@ -390,7 +390,7 @@ def calculate_metrics(trades_df, equity_df, start_cap, col_name='Combined_Equity
 try:
     with st.spinner("Loading Parquet Data & Calculating Market Regimes... (This happens only once)"):
         # Note: Ensure the file name exactly matches the one in your root directory
-        raw_df = load_and_prep_data('NSE_EQ_2020_Fast.parquet', START_YEAR)
+        raw_df = load_and_prep_data(START_YEAR)
 
     with st.spinner("Running Unleveraged Master Ledger..."):
         combined_logs, merged_eq = run_sleeve_simulator(raw_df, BB_CONFIG, MR_CONFIG)
