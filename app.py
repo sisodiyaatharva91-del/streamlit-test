@@ -38,7 +38,7 @@ def load_and_prep_data():
 
     # Strip timezone and convert strictly to date objects for dictionary grouping
     df['DATE'] = pd.to_datetime(df['DATE']).dt.tz_localize(None).dt.date
-    df = df.sort_values(by=['DATE', 'Turnover_SMA_50'], ascending=[True, False])
+    df = df.sort_values(by=['DATE', 'Daily_Turnover_Rank'], ascending=[True, False])
     return df
 
 try:
