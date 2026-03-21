@@ -23,7 +23,7 @@ st.title("📈 V21 Master Portfolio: Hyperparameter Solver")
 @st.cache_resource
 def load_and_prep_data():
     local_file_name = "Deployment_Ready.parquet"
-    drive_url = "https://drive.google.com/file/d/1_k7hbo8GkdIYBM1bwEli7Guvk_QJmSm_/view?usp=sharing"
+    drive_url = "https://drive.google.com/file/d/15tRTvKFUssiQIzHnAb5fjtb4soc04aTu/view?usp=sharing"
     
     if not os.path.exists(local_file_name):
         st.info("Downloading massive 15Y dataset from Google Drive. This happens only once...")
